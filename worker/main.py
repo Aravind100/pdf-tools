@@ -3,13 +3,13 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from PIL import Image, ImageOps
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from PIL import Image
+from PIL import Image, ImageOps
 
-app = FastAPI(title="PDF Tools Conversion API", version="0.1.1")
+app = FastAPI(title="PDF Tools Conversion API", version="0.2.0")
 
 allowed_origins = os.getenv(
     "ALLOWED_ORIGINS",
@@ -25,8 +25,10 @@ app.add_middleware(
 )
 
 MAX_UPLOAD_BYTES = int(
-    os.getenv("MAX_UPLOAD_BYTES", str(25 * 1024 * 1024))
+    os.getenv("MAX_UPLOAD_BYTES", str(100 * 1024 * 1024))
 )
+
+MAX_IMAGES = 100
 
 
 async def save_upload(upload, allowed_extensions, folder):
@@ -48,7 +50,7 @@ async def save_upload(upload, allowed_extensions, folder):
             if size > MAX_UPLOAD_BYTES:
                 raise HTTPException(
                     status_code=413,
-                    detail="File exceeds the current upload limit."
+                    detail="File exceeds the 100 MB upload limit."
                 )
 
             out.write(chunk)
@@ -62,14 +64,30 @@ async def save_upload(upload, allowed_extensions, folder):
     return target
 
 
-def pdf_response(pdf_bytes):
+def pdf_response(pdf_bytes, filename="converted.pdf"):
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": 'attachment; filename="converted.pdf"'
+            "Content-Disposition": f'attachment; filename="{filename}"'
         }
     )
+
+
+def prepare_image(source):
+    """Open an image, correct EXIF rotation and handle transparency."""
+    with Image.open(source) as img:
+        img.load()
+
+        img = ImageOps.exif_transpose(img)
+
+        if "A" in img.getbands():
+            rgba = img.convert("RGBA")
+            background = Image.new("RGBA", rgba.size, "white")
+            background.alpha_composite(rgba)
+            return background.convert("RGB")
+
+        return img.convert("RGB")
 
 
 @app.get("/health")
@@ -80,6 +98,7 @@ def health():
     }
 
 
+# Existing single-image endpoint retained for compatibility
 @app.post("/convert/image-to-pdf")
 async def image_to_pdf(file: UploadFile = File(...)):
 
@@ -95,23 +114,21 @@ async def image_to_pdf(file: UploadFile = File(...)):
         output = folder / "converted.pdf"
 
         try:
-            with Image.open(source) as img:
-                if img.mode in ("RGBA", "LA"):
-                    background = Image.new("RGB", img.size, "white")
-                    alpha = img.getchannel("A") if "A" in img.getbands() else None
-                    background.paste(img.convert("RGB"), mask=alpha)
-                    converted = background
-                else:
-                    converted = img.convert("RGB")
+            converted = prepare_image(source)
 
+            try:
                 converted.save(
                     output,
                     "PDF",
                     resolution=150.0
                 )
+            finally:
+                converted.close()
 
-            # Read PDF into memory before temporary folder is deleted
             pdf_bytes = output.read_bytes()
+
+        except HTTPException:
+            raise
 
         except Exception as exc:
             raise HTTPException(
@@ -121,6 +138,8 @@ async def image_to_pdf(file: UploadFile = File(...)):
 
     return pdf_response(pdf_bytes)
 
+
+# New multiple-images-to-one-PDF endpoint
 @app.post("/convert/images-to-pdf")
 async def multiple_images_to_pdf(files: list[UploadFile] = File(...)):
 
@@ -130,10 +149,10 @@ async def multiple_images_to_pdf(files: list[UploadFile] = File(...)):
             detail="Please upload at least one image."
         )
 
-    if len(files) > 30:
+    if len(files) > MAX_IMAGES:
         raise HTTPException(
             status_code=400,
-            detail="You can upload a maximum of 30 images at once."
+            detail=f"You can upload a maximum of {MAX_IMAGES} images."
         )
 
     with tempfile.TemporaryDirectory(prefix="pdftools-") as tmp:
@@ -153,7 +172,6 @@ async def multiple_images_to_pdf(files: list[UploadFile] = File(...)):
                     )
 
                 source = folder / f"image_{index}{suffix}"
-
                 size = 0
 
                 with source.open("wb") as out:
@@ -164,7 +182,7 @@ async def multiple_images_to_pdf(files: list[UploadFile] = File(...)):
                         if total_size > MAX_UPLOAD_BYTES:
                             raise HTTPException(
                                 status_code=413,
-                                detail="Total image upload exceeds the 25 MB limit."
+                                detail="Total image upload exceeds the 100 MB limit."
                             )
 
                         out.write(chunk)
@@ -175,29 +193,10 @@ async def multiple_images_to_pdf(files: list[UploadFile] = File(...)):
                         detail=f"Image {index + 1} is empty."
                     )
 
-                with Image.open(source) as img:
-                    img.load()
-
-                    # Correct image rotation using EXIF information
-                    img = ImageOps.exif_transpose(img)
-
-                    # Preserve transparency on a white background
-                    if "A" in img.getbands():
-                        rgba = img.convert("RGBA")
-                        background = Image.new(
-                            "RGBA", rgba.size, "white"
-                        )
-                        background.alpha_composite(rgba)
-                        converted = background.convert("RGB")
-                    else:
-                        converted = img.convert("RGB")
-
-                    converted_images.append(converted)
+                converted_images.append(prepare_image(source))
 
             output = folder / "combined.pdf"
 
-            # First image becomes the first page.
-            # Every additional image becomes a separate page.
             first_image = converted_images[0]
 
             first_image.save(
@@ -223,15 +222,10 @@ async def multiple_images_to_pdf(files: list[UploadFile] = File(...)):
             for img in converted_images:
                 img.close()
 
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": 'attachment; filename="combined-images.pdf"'
-        }
-    )
+    return pdf_response(pdf_bytes, "combined-images.pdf")
 
 
+# Existing Gujarati-compatible Word-to-PDF endpoint retained
 @app.post("/convert/docx-to-pdf")
 async def docx_to_pdf(file: UploadFile = File(...)):
 
@@ -285,7 +279,6 @@ async def docx_to_pdf(file: UploadFile = File(...)):
                 detail=detail
             )
 
-        # Read PDF into memory before temporary folder is deleted
         pdf_bytes = output.read_bytes()
 
     return pdf_response(pdf_bytes)
