@@ -3,7 +3,7 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-
+from PIL import Image, ImageOps
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -120,6 +120,116 @@ async def image_to_pdf(file: UploadFile = File(...)):
             )
 
     return pdf_response(pdf_bytes)
+
+@app.post("/convert/images-to-pdf")
+async def multiple_images_to_pdf(files: list[UploadFile] = File(...)):
+
+    if not files:
+        raise HTTPException(
+            status_code=400,
+            detail="Please upload at least one image."
+        )
+
+    if len(files) > 30:
+        raise HTTPException(
+            status_code=400,
+            detail="You can upload a maximum of 30 images at once."
+        )
+
+    with tempfile.TemporaryDirectory(prefix="pdftools-") as tmp:
+        folder = Path(tmp)
+
+        converted_images = []
+        total_size = 0
+
+        try:
+            for index, upload in enumerate(files):
+                suffix = Path(upload.filename or "").suffix.lower()
+
+                if suffix not in {".jpg", ".jpeg", ".png"}:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Unsupported image format: {suffix}"
+                    )
+
+                source = folder / f"image_{index}{suffix}"
+
+                size = 0
+
+                with source.open("wb") as out:
+                    while chunk := await upload.read(1024 * 1024):
+                        size += len(chunk)
+                        total_size += len(chunk)
+
+                        if total_size > MAX_UPLOAD_BYTES:
+                            raise HTTPException(
+                                status_code=413,
+                                detail="Total image upload exceeds the 25 MB limit."
+                            )
+
+                        out.write(chunk)
+
+                if size == 0:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Image {index + 1} is empty."
+                    )
+
+                with Image.open(source) as img:
+                    img.load()
+
+                    # Correct image rotation using EXIF information
+                    img = ImageOps.exif_transpose(img)
+
+                    # Preserve transparency on a white background
+                    if "A" in img.getbands():
+                        rgba = img.convert("RGBA")
+                        background = Image.new(
+                            "RGBA", rgba.size, "white"
+                        )
+                        background.alpha_composite(rgba)
+                        converted = background.convert("RGB")
+                    else:
+                        converted = img.convert("RGB")
+
+                    converted_images.append(converted)
+
+            output = folder / "combined.pdf"
+
+            # First image becomes the first page.
+            # Every additional image becomes a separate page.
+            first_image = converted_images[0]
+
+            first_image.save(
+                output,
+                "PDF",
+                save_all=True,
+                append_images=converted_images[1:],
+                resolution=150.0
+            )
+
+            pdf_bytes = output.read_bytes()
+
+        except HTTPException:
+            raise
+
+        except Exception as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Could not process images: {exc}"
+            )
+
+        finally:
+            for img in converted_images:
+                img.close()
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": 'attachment; filename="combined-images.pdf"'
+        }
+    )
 
 
 @app.post("/convert/docx-to-pdf")
