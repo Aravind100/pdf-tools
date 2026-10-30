@@ -12,6 +12,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && fc-cache -f -v \
     && rm -rf /var/lib/apt/lists/*
 
+    
+# Map Microsoft Shruti font requests to Noto Sans Gujarati
+RUN printf '%s\n' \
+    '<?xml version="1.0"?>' \
+    '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">' \
+    '<fontconfig>' \
+    '  <alias>' \
+    '    <family>Shruti</family>' \
+    '    <prefer><family>Noto Sans Gujarati</family></prefer>' \
+    '  </alias>' \
+    '</fontconfig>' \
+    > /etc/fonts/conf.avail/99-shruti.conf \
+    && ln -sf /etc/fonts/conf.avail/99-shruti.conf /etc/fonts/conf.d/99-shruti.conf \
+    && fc-cache -f
+
+
 WORKDIR /app
 
 COPY requirements.txt .
