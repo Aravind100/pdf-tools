@@ -8,7 +8,11 @@ import {
   Trash2, ArrowUp, ArrowDown
 } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_CONVERTER_API_URL || "http://localhost:8000";
+const API =
+  process.env.NEXT_PUBLIC_CONVERTER_API_URL || "http://localhost:8000";
+
+const MAX_IMAGES = 100;
+const MAX_TOTAL_BYTES = 100 * 1024 * 1024;
 
 const tools = [
   { title: "Word to PDF", desc: "Convert DOCX documents into PDF files.", icon: FileText, kind: "docx", color: "red" },
@@ -73,10 +77,7 @@ export default function Home() {
         endpoint = "/convert/docx-to-pdf";
         downloadName = `${file.name.replace(/\.[^.]+$/, "")}.pdf`;
       } else {
-        images.forEach((image) => {
-          form.append("files", image);
-        });
-
+        images.forEach((image) => form.append("files", image));
         endpoint = "/convert/images-to-pdf";
         downloadName = "combined-images.pdf";
       }
@@ -104,7 +105,6 @@ export default function Home() {
       a.remove();
 
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-
       setMessage("Conversion complete. Your PDF download has started.");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Something went wrong.");
@@ -143,15 +143,15 @@ export default function Home() {
     setImages((previous) => {
       const combined = [...previous, ...allowed];
 
-      if (combined.length > 30) {
-        setMessage("You can upload a maximum of 30 images.");
-        return combined.slice(0, 30);
+      if (combined.length > MAX_IMAGES) {
+        setMessage(`You can upload a maximum of ${MAX_IMAGES} images.`);
+        return combined.slice(0, MAX_IMAGES);
       }
 
       const totalSize = combined.reduce((sum, item) => sum + item.size, 0);
 
-      if (totalSize > 25 * 1024 * 1024) {
-        setMessage("Total image size must not exceed 25 MB.");
+      if (totalSize > MAX_TOTAL_BYTES) {
+        setMessage("Total image size must not exceed 100 MB.");
         return previous;
       }
 
@@ -199,7 +199,11 @@ export default function Home() {
             <a href="#privacy" className="hover:text-red-600">Privacy</a>
           </nav>
 
-          <button className="md:hidden" aria-label="Toggle menu" onClick={() => setMobileOpen(!mobileOpen)}>
+          <button
+            className="md:hidden"
+            aria-label="Toggle menu"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
             {mobileOpen ? <X/> : <Menu/>}
           </button>
         </div>
@@ -229,7 +233,10 @@ export default function Home() {
             No account required for basic conversions.
           </p>
 
-          <a href="#tools" className="mt-8 inline-flex items-center gap-2 rounded-xl bg-red-600 px-6 py-3.5 font-bold text-white shadow-lg shadow-red-200 transition hover:bg-red-700">
+          <a
+            href="#tools"
+            className="mt-8 inline-flex items-center gap-2 rounded-xl bg-red-600 px-6 py-3.5 font-bold text-white shadow-lg shadow-red-200 transition hover:bg-red-700"
+          >
             Explore PDF Tools <ArrowRight size={18}/>
           </a>
         </div>
@@ -298,7 +305,13 @@ export default function Home() {
               ref={inputRef}
               type="file"
               className="hidden"
-              accept={selected.kind === "docx" ? ".docx" : selected.kind === "image" ? ".jpg,.jpeg,.png" : ".pdf"}
+              accept={
+                selected.kind === "docx"
+                  ? ".docx"
+                  : selected.kind === "image"
+                  ? ".jpg,.jpeg,.png"
+                  : ".pdf"
+              }
               multiple={selected.kind === "image"}
               onChange={(e) => {
                 if (selected.kind === "image") {
@@ -336,7 +349,7 @@ export default function Home() {
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold">Selected images</h3>
                       <span className="text-sm text-slate-500">
-                        {images.length} / 30 images
+                        {images.length} / {MAX_IMAGES} images
                       </span>
                     </div>
 
@@ -405,7 +418,7 @@ export default function Home() {
                     )}
 
                     <p className="mt-3 text-xs text-slate-500">
-                      Maximum 30 images and 25 MB total. Each image will become a separate PDF page.
+                      Maximum 100 images and 100 MB total. Each image will become a separate PDF page.
                     </p>
                   </div>
                 )}
