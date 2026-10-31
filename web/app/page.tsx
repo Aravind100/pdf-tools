@@ -16,14 +16,37 @@ const MAX_PDFS = 100;
 const MAX_TOTAL_BYTES = 100 * 1024 * 1024;
 
 const tools = [
-  { title: "Word to PDF", desc: "Convert DOCX documents into PDF files.", icon: FileText, kind: "docx", color: "red" },
-  { title: "JPG to PDF", desc: "Convert one or multiple JPG images into one PDF.", icon: FileImage, kind: "image", color: "blue" },
-  { title: "PNG to PDF", desc: "Convert one or multiple PNG images into one PDF.", icon: ImageIcon, kind: "image", color: "green" },
-  { title: "Edit PDF", desc: "Edit document content and annotations.", icon: FilePenLine, kind: "editor", color: "purple" },
-  { title: "Merge PDF", desc: "Combine multiple PDF documents into one file.", icon: Files, kind: "merge", color: "orange" },
-  { title: "Split PDF", desc: "Extract pages or split a document.", icon: Scissors, kind: "planned", color: "teal" },
-  { title: "Compress PDF", desc: "Reduce PDF file size.", icon: FileDown, kind: "planned", color: "pink" },
-  { title: "Protect PDF", desc: "Add password protection to PDFs.", icon: ShieldCheck, kind: "planned", color: "indigo" },
+  { title: "Word to PDF", desc: "Convert DOCX documents into PDF files online.", icon: FileText, kind: "docx", color: "red", href: "/word-to-pdf" },
+  { title: "JPG to PDF", desc: "Convert one or multiple JPG images into one PDF.", icon: FileImage, kind: "image", color: "blue", href: "/jpg-to-pdf" },
+  { title: "PNG to PDF", desc: "Convert one or multiple PNG images into one PDF.", icon: ImageIcon, kind: "image", color: "green", href: "/png-to-pdf" },
+  { title: "Edit PDF", desc: "Edit document content and annotations.", icon: FilePenLine, kind: "editor", color: "purple", href: undefined },
+  { title: "Merge PDF", desc: "Combine multiple PDF documents into one file.", icon: Files, kind: "merge", color: "orange", href: "/merge-pdf" },
+  { title: "Split PDF", desc: "Extract pages or split a document.", icon: Scissors, kind: "planned", color: "teal", href: undefined },
+  { title: "Compress PDF", desc: "Reduce PDF file size.", icon: FileDown, kind: "planned", color: "pink", href: undefined },
+  { title: "Protect PDF", desc: "Add password protection to PDFs.", icon: ShieldCheck, kind: "planned", color: "indigo", href: undefined },
+];
+
+const homepageFaqs = [
+  {
+    question: "Are these PDF tools free to use?",
+    answer: "You can use the available PDF conversion and merging tools without creating an account. Upload limits apply to each tool.",
+  },
+  {
+    question: "Can I convert Word documents into PDF?",
+    answer: "Yes. Use the Word to PDF tool to convert supported DOCX documents into PDF files.",
+  },
+  {
+    question: "Can I convert multiple JPG or PNG images into one PDF?",
+    answer: "Yes. Select multiple JPG, JPEG or PNG images, arrange their order and convert them into a single PDF document.",
+  },
+  {
+    question: "How do I combine multiple PDF files?",
+    answer: "Open the Merge PDF tool, select at least two PDF files, arrange their order and select Merge PDF to download one combined document.",
+  },
+  {
+    question: "Do I need to install software?",
+    answer: "No installation is required. The tools work in a supported web browser on desktop and mobile devices.",
+  },
 ];
 
 type ImagePreview = {
@@ -255,10 +278,12 @@ export default function Home() {
             PDF <span className="text-red-600">Tools</span>
           </a>
 
-          <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-600 md:flex">
+          <nav aria-label="Main navigation" className="hidden items-center gap-6 text-sm font-semibold text-slate-600 md:flex">
             <a href="#tools" className="hover:text-red-600">All PDF Tools</a>
-            <a href="#how" className="hover:text-red-600">How it works</a>
-            <a href="#privacy" className="hover:text-red-600">Privacy</a>
+            <a href="/word-to-pdf" className="hover:text-red-600">Word to PDF</a>
+            <a href="/images-to-pdf" className="hover:text-red-600">Images to PDF</a>
+            <a href="/merge-pdf" className="hover:text-red-600">Merge PDF</a>
+            <a href="#faqs" className="hover:text-red-600">FAQs</a>
           </nav>
 
           <button
@@ -271,9 +296,14 @@ export default function Home() {
         </div>
 
         {mobileOpen && (
-          <nav className="grid gap-3 border-t px-5 py-4 text-sm md:hidden">
+          <nav aria-label="Mobile navigation" className="grid gap-3 border-t px-5 py-4 text-sm font-semibold text-slate-700 md:hidden">
             <a onClick={() => setMobileOpen(false)} href="#tools">All PDF Tools</a>
+            <a onClick={() => setMobileOpen(false)} href="/word-to-pdf">Word to PDF</a>
+            <a onClick={() => setMobileOpen(false)} href="/jpg-to-pdf">JPG to PDF</a>
+            <a onClick={() => setMobileOpen(false)} href="/png-to-pdf">PNG to PDF</a>
+            <a onClick={() => setMobileOpen(false)} href="/merge-pdf">Merge PDF</a>
             <a onClick={() => setMobileOpen(false)} href="#how">How it works</a>
+            <a onClick={() => setMobileOpen(false)} href="#faqs">FAQs</a>
             <a onClick={() => setMobileOpen(false)} href="#privacy">Privacy</a>
           </nav>
         )}
@@ -286,13 +316,13 @@ export default function Home() {
           </span>
 
           <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight text-slate-900 sm:text-6xl">
-            All your PDF tools.<br/>
-            <span className="text-red-600">One simple place.</span>
+            Free Online PDF Tools<br/>
+            <span className="text-red-600">Convert, Combine &amp; Manage PDFs</span>
           </h1>
 
           <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-500 sm:text-lg">
-            Convert, edit and manage your documents with an easy online workspace.
-            No account required for basic conversions.
+            Convert Word documents and images to PDF, or combine multiple PDF files online.
+            Simple browser-based tools with no account required for available conversions.
           </p>
 
           <a
@@ -321,22 +351,49 @@ export default function Home() {
             const Icon = tool.icon;
 
             return (
-              <button
+              <div
                 key={tool.title}
-                onClick={() => chooseTool(tool)}
-                className="group rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-red-200 hover:shadow-lg"
+                className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-red-200 hover:shadow-lg"
               >
                 <span className={`grid h-12 w-12 place-items-center rounded-xl bg-${tool.color}-50 text-${tool.color}-600`}>
                   <Icon size={25}/>
                 </span>
                 <h3 className="mt-5 text-lg font-extrabold">{tool.title}</h3>
                 <p className="mt-2 min-h-10 text-sm leading-5 text-slate-500">{tool.desc}</p>
-                <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-red-600">
-                  Open tool <ArrowRight size={15}/>
-                </span>
-              </button>
+
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <button
+                    type="button"
+                    onClick={() => chooseTool(tool)}
+                    className="inline-flex items-center gap-1 text-sm font-bold text-red-600 hover:text-red-700"
+                  >
+                    Quick tool <ArrowRight size={15}/>
+                  </button>
+                  {tool.href && (
+                    <a
+                      href={tool.href}
+                      className="text-sm font-semibold text-slate-600 underline-offset-4 hover:text-red-600 hover:underline"
+                    >
+                      Open page
+                    </a>
+                  )}
+                </div>
+              </div>
             );
           })}
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
+          <h3 className="text-lg font-extrabold">Explore our online PDF converters</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Choose a dedicated tool to convert or combine your documents. Each page includes its own file uploader and instructions.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-3 text-sm font-bold">
+            <a href="/word-to-pdf" className="text-red-600 hover:underline">Word to PDF</a>
+            <a href="/jpg-to-pdf" className="text-red-600 hover:underline">JPG to PDF</a>
+            <a href="/png-to-pdf" className="text-red-600 hover:underline">PNG to PDF</a>
+            <a href="/merge-pdf" className="text-red-600 hover:underline">Merge PDF</a>
+          </div>
         </div>
       </section>
 
@@ -581,9 +638,9 @@ export default function Home() {
 
           <div className="mt-9 grid gap-8 text-center md:grid-cols-3">
             {[
-              ["01", "Upload your files", "Choose a document or multiple images from your device."],
-              ["02", "Let PDF Tools work", "The conversion service processes your files."],
-              ["03", "Download your result", "Get your converted PDF file."],
+              ["01", "Choose a tool", "Select Word to PDF, JPG to PDF, PNG to PDF or Merge PDF."],
+              ["02", "Upload your files", "Choose a document, images or multiple PDF files."],
+              ["03", "Download your result", "Get your converted or combined PDF file."],
             ].map(([n, t, d]) => (
               <div key={n}>
                 <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-red-600 text-lg font-black text-white">
@@ -597,6 +654,25 @@ export default function Home() {
         </div>
       </section>
 
+      <section id="faqs" className="mx-auto max-w-4xl px-5 py-14">
+        <div className="text-center">
+          <p className="text-sm font-bold uppercase tracking-widest text-red-600">Help and information</p>
+          <h2 className="mt-2 text-3xl font-black">Frequently Asked Questions</h2>
+          <p className="mt-3 text-slate-500">
+            Find answers about converting, combining and using PDF files online.
+          </p>
+        </div>
+
+        <div className="mt-7 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white px-5">
+          {homepageFaqs.map((faq) => (
+            <div key={faq.question} className="py-5">
+              <h3 className="font-bold text-slate-900">{faq.question}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{faq.answer}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section id="privacy" className="mx-auto max-w-5xl px-5 py-14 text-center">
         <ShieldCheck className="mx-auto text-green-600" size={36}/>
         <h2 className="mt-4 text-2xl font-black">Your documents deserve privacy</h2>
@@ -606,7 +682,13 @@ export default function Home() {
         </p>
       </section>
 
-      <footer className="border-t border-slate-200 bg-white px-5 py-7 text-center text-sm text-slate-500">
+      <footer className="border-t border-slate-200 bg-white px-5 py-8 text-center text-sm text-slate-500">
+        <nav aria-label="PDF converter links" className="mb-4 flex flex-wrap justify-center gap-x-5 gap-y-2 font-semibold">
+          <a href="/word-to-pdf" className="hover:text-red-600">Word to PDF</a>
+          <a href="/jpg-to-pdf" className="hover:text-red-600">JPG to PDF</a>
+          <a href="/png-to-pdf" className="hover:text-red-600">PNG to PDF</a>
+          <a href="/merge-pdf" className="hover:text-red-600">Merge PDF</a>
+        </nav>
         © {new Date().getFullYear()} PDF Tools. All rights reserved.
       </footer>
     </main>
