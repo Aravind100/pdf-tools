@@ -8,14 +8,26 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
 
   title: {
-    default: "Free Online PDF Tools | Your PDF Tools",
+    default:
+      "Free Online PDF Tools – Convert, Merge & Manage PDFs",
     template: "%s | Your PDF Tools",
   },
 
   description:
-    "Convert JPG, PNG images and Word documents to PDF online for free. Combine multiple images into one PDF, arrange pages and download your PDF easily.",
+    "Use free online PDF tools to convert Word to PDF, JPG to PDF and PNG to PDF, and merge multiple PDF files into one document. Easy PDF tools for desktop and mobile.",
 
   applicationName: "Your PDF Tools",
+
+  keywords: [
+    "free PDF tools",
+    "PDF converter online",
+    "Word to PDF",
+    "JPG to PDF",
+    "PNG to PDF",
+    "Merge PDF",
+    "Combine PDF files",
+    "Online PDF tools",
+  ],
 
   alternates: {
     canonical: "/",
@@ -26,9 +38,10 @@ export const metadata: Metadata = {
   },
 
   openGraph: {
-    title: "Free Online PDF Tools | Your PDF Tools",
+    title:
+      "Free Online PDF Tools – Convert, Merge & Manage PDFs",
     description:
-      "Convert images and Word documents to PDF online. Combine multiple images into one PDF with our easy-to-use PDF tools.",
+      "Convert Word, JPG and PNG files to PDF and combine multiple PDF documents online with easy-to-use tools.",
     url: siteUrl,
     siteName: "Your PDF Tools",
     locale: "en_IN",
@@ -37,9 +50,10 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: "Free Online PDF Tools | Your PDF Tools",
+    title:
+      "Free Online PDF Tools – Convert, Merge & Manage PDFs",
     description:
-      "Convert JPG, PNG and Word documents to PDF online. Combine multiple images into one PDF easily.",
+      "Convert Word, JPG and PNG files to PDF. Merge multiple PDF files online for free.",
   },
 
   robots: {
