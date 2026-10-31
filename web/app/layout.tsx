@@ -36,6 +36,16 @@ export const metadata: Metadata = {
     google: "WFPTfyeMakHgyCXNIavAZ-ebN-KXLvPKeU7HAT0xLpA",
   },
 
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [
+      { url: "/icon-192.png", sizes: "192x192" },
+    ],
+  },
+
   openGraph: {
     title: "Free Online PDF Tools – Convert, Merge & Manage PDFs",
     description:
