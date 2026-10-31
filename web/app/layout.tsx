@@ -21,6 +21,10 @@ export const metadata: Metadata = {
     canonical: "/",
   },
 
+  verification: {
+    google: "WFPTfyeMakHgyCXNIavAZ-ebN-KXLvPKeU7HAT0xLpA",
+  },
+
   openGraph: {
     title: "Free Online PDF Tools | Your PDF Tools",
     description:
