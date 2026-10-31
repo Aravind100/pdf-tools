@@ -35,5 +35,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.9,
     },
+    {
+  url: "https://your-pdf-tools.vercel.app/merge-pdf",
+  lastModified: new Date(),
+  changeFrequency: "monthly",
+  priority: 0.9,
+},
   ];
 }
