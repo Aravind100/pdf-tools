@@ -8,8 +8,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
 
   title: {
-    default:
-      "Free Online PDF Tools – Convert, Merge & Manage PDFs",
+    default: "Free Online PDF Tools – Convert, Merge & Manage PDFs",
     template: "%s | Your PDF Tools",
   },
 
@@ -38,8 +37,7 @@ export const metadata: Metadata = {
   },
 
   openGraph: {
-    title:
-      "Free Online PDF Tools – Convert, Merge & Manage PDFs",
+    title: "Free Online PDF Tools – Convert, Merge & Manage PDFs",
     description:
       "Convert Word, JPG and PNG files to PDF and combine multiple PDF documents online with easy-to-use tools.",
     url: siteUrl,
@@ -50,8 +48,7 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title:
-      "Free Online PDF Tools – Convert, Merge & Manage PDFs",
+    title: "Free Online PDF Tools – Convert, Merge & Manage PDFs",
     description:
       "Convert Word, JPG and PNG files to PDF. Merge multiple PDF files online for free.",
   },
@@ -69,6 +66,32 @@ export const metadata: Metadata = {
   },
 };
 
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${siteUrl}/#organization`,
+      name: "Your PDF Tools",
+      url: siteUrl,
+      description:
+        "Your PDF Tools provides online PDF conversion and document management tools.",
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
+      name: "Your PDF Tools",
+      url: siteUrl,
+      description:
+        "Free online tools to convert Word, JPG and PNG files to PDF and merge multiple PDF documents.",
+      inLanguage: "en",
+      publisher: {
+        "@id": `${siteUrl}/#organization`,
+      },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -76,7 +99,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(structuredData).replace(
+              /</g,
+              "\\u003c"
+            ),
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }
