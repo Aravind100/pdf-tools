@@ -3,13 +3,15 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+from io import BytesIO
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from PIL import Image, ImageOps
+from pypdf import PdfReader, PdfWriter
 
-app = FastAPI(title="PDF Tools Conversion API", version="0.2.0")
+app = FastAPI(title="PDF Tools Conversion API", version="0.3.0")
 
 allowed_origins = os.getenv(
     "ALLOWED_ORIGINS",
@@ -29,6 +31,7 @@ MAX_UPLOAD_BYTES = int(
 )
 
 MAX_IMAGES = 100
+MAX_PDFS = 100
 
 
 async def save_upload(upload, allowed_extensions, folder):
@@ -98,7 +101,7 @@ def health():
     }
 
 
-# Existing single-image endpoint retained for compatibility
+# Existing single-image endpoint
 @app.post("/convert/image-to-pdf")
 async def image_to_pdf(file: UploadFile = File(...)):
 
@@ -139,7 +142,7 @@ async def image_to_pdf(file: UploadFile = File(...)):
     return pdf_response(pdf_bytes)
 
 
-# New multiple-images-to-one-PDF endpoint
+# Multiple images into one PDF
 @app.post("/convert/images-to-pdf")
 async def multiple_images_to_pdf(files: list[UploadFile] = File(...)):
 
@@ -225,7 +228,111 @@ async def multiple_images_to_pdf(files: list[UploadFile] = File(...)):
     return pdf_response(pdf_bytes, "combined-images.pdf")
 
 
-# Existing Gujarati-compatible Word-to-PDF endpoint retained
+# NEW: Merge multiple PDF files into one PDF
+@app.post("/convert/merge-pdf")
+async def merge_pdf(files: list[UploadFile] = File(...)):
+
+    if not files:
+        raise HTTPException(
+            status_code=400,
+            detail="Please upload at least two PDF files."
+        )
+
+    if len(files) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Please upload at least two PDF files."
+        )
+
+    if len(files) > MAX_PDFS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"You can upload a maximum of {MAX_PDFS} PDF files."
+        )
+
+    with tempfile.TemporaryDirectory(prefix="pdftools-") as tmp:
+        folder = Path(tmp)
+        writer = PdfWriter()
+        total_size = 0
+
+        try:
+            for index, upload in enumerate(files):
+                suffix = Path(upload.filename or "").suffix.lower()
+
+                if suffix != ".pdf":
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"{upload.filename or 'File'} is not a PDF."
+                    )
+
+                source = folder / f"document_{index}.pdf"
+                size = 0
+
+                with source.open("wb") as out:
+                    while chunk := await upload.read(1024 * 1024):
+                        size += len(chunk)
+                        total_size += len(chunk)
+
+                        if total_size > MAX_UPLOAD_BYTES:
+                            raise HTTPException(
+                                status_code=413,
+                                detail="Total PDF upload exceeds the 100 MB limit."
+                            )
+
+                        out.write(chunk)
+
+                if size == 0:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"PDF {index + 1} is empty."
+                    )
+
+                try:
+                    reader = PdfReader(str(source), strict=True)
+
+                    if reader.is_encrypted:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"PDF {index + 1} is password-protected. Please unlock it first."
+                        )
+
+                    if len(reader.pages) == 0:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"PDF {index + 1} has no pages."
+                        )
+
+                    writer.append(reader)
+
+                except HTTPException:
+                    raise
+
+                except Exception:
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"PDF {index + 1} is invalid or damaged."
+                    )
+
+            output_buffer = BytesIO()
+            writer.write(output_buffer)
+            pdf_bytes = output_buffer.getvalue()
+
+        except HTTPException:
+            raise
+
+        except Exception as exc:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Could not merge PDF files: {exc}"
+            )
+
+        finally:
+            writer.close()
+
+    return pdf_response(pdf_bytes, "merged.pdf")
+
+
+# Existing Gujarati-compatible Word-to-PDF endpoint
 @app.post("/convert/docx-to-pdf")
 async def docx_to_pdf(file: UploadFile = File(...)):
 
