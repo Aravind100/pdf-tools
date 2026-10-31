@@ -12,6 +12,7 @@ const API =
   process.env.NEXT_PUBLIC_CONVERTER_API_URL || "http://localhost:8000";
 
 const MAX_IMAGES = 100;
+const MAX_PDFS = 100;
 const MAX_TOTAL_BYTES = 100 * 1024 * 1024;
 
 const tools = [
@@ -19,7 +20,7 @@ const tools = [
   { title: "JPG to PDF", desc: "Convert one or multiple JPG images into one PDF.", icon: FileImage, kind: "image", color: "blue" },
   { title: "PNG to PDF", desc: "Convert one or multiple PNG images into one PDF.", icon: ImageIcon, kind: "image", color: "green" },
   { title: "Edit PDF", desc: "Edit document content and annotations.", icon: FilePenLine, kind: "editor", color: "purple" },
-  { title: "Merge PDF", desc: "Combine multiple PDF documents.", icon: Files, kind: "planned", color: "orange" },
+  { title: "Merge PDF", desc: "Combine multiple PDF documents into one file.", icon: Files, kind: "merge", color: "orange" },
   { title: "Split PDF", desc: "Extract pages or split a document.", icon: Scissors, kind: "planned", color: "teal" },
   { title: "Compress PDF", desc: "Reduce PDF file size.", icon: FileDown, kind: "planned", color: "pink" },
   { title: "Protect PDF", desc: "Add password protection to PDFs.", icon: ShieldCheck, kind: "planned", color: "indigo" },
@@ -35,6 +36,7 @@ export default function Home() {
   const [selected, setSelected] = useState<(typeof tools)[number] | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [images, setImages] = useState<File[]>([]);
+  const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -58,6 +60,10 @@ export default function Home() {
 
     if (selected.kind === "docx" && !file) return;
     if (selected.kind === "image" && images.length === 0) return;
+    if (selected.kind === "merge" && pdfFiles.length < 2) {
+      setMessage("Please select at least two PDF files.");
+      return;
+    }
 
     if (selected.kind === "planned" || selected.kind === "editor") {
       setMessage("This tool is planned for a future development phase.");
@@ -72,7 +78,11 @@ export default function Home() {
       let endpoint = "";
       let downloadName = "";
 
-      if (selected.kind === "docx" && file) {
+      if (selected.kind === "merge") {
+        pdfFiles.forEach((pdf) => form.append("files", pdf));
+        endpoint = "/convert/merge-pdf";
+        downloadName = "merged.pdf";
+      } else if (selected.kind === "docx" && file) {
         form.append("file", file);
         endpoint = "/convert/docx-to-pdf";
         downloadName = `${file.name.replace(/\.[^.]+$/, "")}.pdf`;
@@ -105,7 +115,9 @@ export default function Home() {
       a.remove();
 
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setMessage("Conversion complete. Your PDF download has started.");
+      setMessage(selected.kind === "merge"
+        ? "PDFs merged successfully. Your download has started."
+        : "Conversion complete. Your PDF download has started.");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -117,6 +129,7 @@ export default function Home() {
     setSelected(tool);
     setFile(null);
     setImages([]);
+    setPdfFiles([]);
     setMessage("");
 
     if (tool.kind === "planned" || tool.kind === "editor") return;
@@ -178,6 +191,55 @@ export default function Home() {
         updated[index],
       ];
 
+      return updated;
+    });
+  }
+
+  function addPdfs(selectedFiles: FileList | null) {
+    if (!selectedFiles) return;
+
+    const incoming = Array.from(selectedFiles);
+    const allowed = incoming.filter((item) =>
+      item.name.toLowerCase().endsWith(".pdf")
+    );
+
+    setPdfFiles((previous) => {
+      const combined = [...previous, ...allowed];
+
+      if (allowed.length !== incoming.length) {
+        setMessage("Only PDF files are supported.");
+      } else {
+        setMessage("");
+      }
+
+      if (combined.length > MAX_PDFS) {
+        setMessage(`You can upload a maximum of ${MAX_PDFS} PDF files.`);
+        return combined.slice(0, MAX_PDFS);
+      }
+
+      const totalSize = combined.reduce((sum, item) => sum + item.size, 0);
+      if (totalSize > MAX_TOTAL_BYTES) {
+        setMessage("Total PDF size must not exceed 100 MB.");
+        return previous;
+      }
+
+      return combined;
+    });
+
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function removePdf(index: number) {
+    setPdfFiles((previous) => previous.filter((_, i) => i !== index));
+    setMessage("");
+  }
+
+  function movePdf(index: number, direction: number) {
+    setPdfFiles((previous) => {
+      const updated = [...previous];
+      const target = index + direction;
+      if (target < 0 || target >= updated.length) return previous;
+      [updated[index], updated[target]] = [updated[target], updated[index]];
       return updated;
     });
   }
@@ -292,6 +354,7 @@ export default function Home() {
                   setSelected(null);
                   setFile(null);
                   setImages([]);
+                  setPdfFiles([]);
                   setMessage("");
                 }}
                 className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
@@ -310,12 +373,16 @@ export default function Home() {
                   ? ".docx"
                   : selected.kind === "image"
                   ? ".jpg,.jpeg,.png"
+                  : selected.kind === "merge"
+                  ? ".pdf,application/pdf"
                   : ".pdf"
               }
-              multiple={selected.kind === "image"}
+              multiple={selected.kind === "image" || selected.kind === "merge"}
               onChange={(e) => {
                 if (selected.kind === "image") {
                   addImages(e.target.files);
+                } else if (selected.kind === "merge") {
+                  addPdfs(e.target.files);
                 } else {
                   setFile(e.target.files?.[0] || null);
                   setMessage("");
@@ -323,7 +390,7 @@ export default function Home() {
               }}
             />
 
-            {(selected.kind === "docx" || selected.kind === "image") ? (
+            {(selected.kind === "docx" || selected.kind === "image" || selected.kind === "merge") ? (
               <>
                 <button
                   onClick={() => inputRef.current?.click()}
@@ -334,12 +401,16 @@ export default function Home() {
                   <span className="mt-3 font-bold">
                     {selected.kind === "image"
                       ? "Choose multiple images"
+                      : selected.kind === "merge"
+                      ? "Choose multiple PDF files"
                       : file ? file.name : "Choose a Word document"}
                   </span>
 
                   <span className="mt-1 text-sm text-slate-500">
                     {selected.kind === "image"
                       ? "Select JPG or PNG images from your device"
+                      : selected.kind === "merge"
+                      ? "Select at least two PDF documents to combine"
                       : "or click to browse your device"}
                   </span>
                 </button>
@@ -423,10 +494,57 @@ export default function Home() {
                   </div>
                 )}
 
+                {selected.kind === "merge" && (
+                  <div className="mt-5">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold">PDF files to merge</h3>
+                      <span className="text-sm text-slate-500">
+                        {pdfFiles.length} / {MAX_PDFS} files
+                      </span>
+                    </div>
+
+                    {pdfFiles.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        {pdfFiles.map((pdf, index) => (
+                          <div key={`${pdf.name}-${index}`} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-red-50 text-red-600">
+                              <FileText size={20}/>
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">{pdf.name}</p>
+                              <p className="text-xs text-slate-500">
+                                {(pdf.size / (1024 * 1024)).toFixed(2)} MB · Merge position {index + 1}
+                              </p>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <button type="button" title="Move up" disabled={index === 0} onClick={() => movePdf(index, -1)} className="rounded p-1 hover:bg-slate-100 disabled:opacity-30">
+                                <ArrowUp size={17}/>
+                              </button>
+                              <button type="button" title="Move down" disabled={index === pdfFiles.length - 1} onClick={() => movePdf(index, 1)} className="rounded p-1 hover:bg-slate-100 disabled:opacity-30">
+                                <ArrowDown size={17}/>
+                              </button>
+                            </div>
+                            <button type="button" title="Remove PDF" onClick={() => removePdf(index)} className="rounded-lg p-2 text-red-600 hover:bg-red-50">
+                              <Trash2 size={18}/>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">
+                        No PDF files selected yet.
+                      </p>
+                    )}
+                    <p className="mt-3 text-xs text-slate-500">
+                      Select 2–100 PDF files. Maximum combined size: 100 MB. The files will be merged in the order shown above.
+                    </p>
+                  </div>
+                )}
+
                 <button
                   disabled={
                     busy ||
-                    (selected.kind === "docx" ? !file : images.length === 0)
+                    (selected.kind === "docx" ? !file : selected.kind === "image" ? images.length === 0 : pdfFiles.length < 2)
                   }
                   onClick={convert}
                   className="mt-5 w-full rounded-xl bg-red-600 px-5 py-3.5 font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300"
@@ -435,6 +553,8 @@ export default function Home() {
                     ? "Processing…"
                     : selected.kind === "image"
                     ? `Combine ${images.length} images into PDF`
+                    : selected.kind === "merge"
+                    ? `Merge ${pdfFiles.length} PDF files`
                     : "Convert to PDF"}
                 </button>
               </>
