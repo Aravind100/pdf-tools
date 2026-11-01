@@ -66,7 +66,8 @@ export default function PdfEditor() {
 
         const pdfjs = await import("pdfjs-dist");
 
-        pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+        pdfjs.GlobalWorkerOptions.workerSrc =
+  "https://unpkg.com/pdfjs-dist@6.4.299/build/pdf.worker.min.mjs";
 
         const loadingTask = pdfjs.getDocument({
           data: new Uint8Array(pdfBytes!),
