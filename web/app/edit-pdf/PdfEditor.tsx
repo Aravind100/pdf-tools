@@ -41,6 +41,7 @@ export default function PdfEditor() {
   const [selectedPage, setSelectedPage] = useState(0);
   const [pageImages, setPageImages] = useState<string[]>([]);
   const [textItems, setTextItems] = useState<TextItem[]>([]);
+  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
   const [imageItems, setImageItems] = useState<ImageItem[]>([]);
   const [textValue, setTextValue] = useState("Your text");
   const [fontSize, setFontSize] = useState(20);
@@ -489,22 +490,62 @@ pdfjs.GlobalWorkerOptions.workerSrc =
                   style={{ width: "650px" }}
                 />
 
-                {textItems
-                  .filter((item) => item.page === selectedPage)
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      className="absolute whitespace-pre-wrap"
-                      style={{
-                        left: item.x,
-                        top: item.y,
-                        fontSize: item.size,
-                        color: item.color,
-                      }}
-                    >
-                      {item.text}
-                    </div>
-                  ))}
+              {textItems
+  .filter((item) => item.page === selectedPage)
+  .map((item) => (
+    <div
+      key={item.id}
+      onPointerDown={(event) => {
+        if (tool !== "select") return;
+
+        event.stopPropagation();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        setSelectedTextId(item.id);
+      }}
+      onPointerMove={(event) => {
+        if (
+          tool !== "select" ||
+          selectedTextId !== item.id ||
+          event.buttons !== 1
+        ) {
+          return;
+        }
+
+        const dx = event.movementX;
+        const dy = event.movementY;
+
+        setTextItems((items) =>
+          items.map((textItem) =>
+            textItem.id === item.id
+              ? {
+                  ...textItem,
+                  x: Math.max(0, textItem.x + dx),
+                  y: Math.max(0, textItem.y + dy),
+                }
+              : textItem
+          )
+        );
+      }}
+      onClick={(event) => event.stopPropagation()}
+      className={`absolute whitespace-pre-wrap ${
+        tool === "select" ? "cursor-move" : "pointer-events-none"
+      } ${
+        selectedTextId === item.id
+          ? "outline outline-2 outline-blue-500 outline-dashed"
+          : ""
+      }`}
+      style={{
+        left: item.x,
+        top: item.y,
+        fontSize: item.size,
+        color: item.color,
+        touchAction: "none",
+        userSelect: "none",
+      }}
+    >
+      {item.text}
+    </div>
+  ))}
 
                 {imageItems
                   .filter((item) => item.page === selectedPage)
