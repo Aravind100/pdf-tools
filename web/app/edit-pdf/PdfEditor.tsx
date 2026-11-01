@@ -34,6 +34,15 @@ type ImageItem = {
   data: string;
 };
 
+type DrawingItem = {
+  id: string;
+  page: number;
+  points: { x: number; y: number }[];
+  color: string;
+  width: number;
+  type: "draw" | "highlight";
+};
+
 export default function PdfEditor() {
   const [file, setFile] = useState<File | null>(null);
   const [pdfBytes, setPdfBytes] = useState<ArrayBuffer | null>(null);
@@ -43,6 +52,10 @@ export default function PdfEditor() {
   const [textItems, setTextItems] = useState<TextItem[]>([]);
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
   const [imageItems, setImageItems] = useState<ImageItem[]>([]);
+  const [drawingItems, setDrawingItems] = useState<DrawingItem[]>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawingColor, setDrawingColor] = useState("#ffff00");
+  const [drawingWidth, setDrawingWidth] = useState(12);
   const [textValue, setTextValue] = useState("Your text");
   const [fontSize, setFontSize] = useState(20);
   const [textColor, setTextColor] = useState("#111827");
@@ -489,6 +502,27 @@ pdfjs.GlobalWorkerOptions.workerSrc =
                   className="block max-w-full"
                   style={{ width: "650px" }}
                 />
+
+                <svg
+  className="pointer-events-none absolute inset-0 h-full w-full"
+  viewBox={`0 0 650 ${pageHeight || 920}`}
+  preserveAspectRatio="none"
+>
+  {drawingItems
+    .filter((item) => item.page === selectedPage)
+    .map((item) => (
+      <polyline
+        key={item.id}
+        points={item.points.map((p) => `${p.x},${p.y}`).join(" ")}
+        fill="none"
+        stroke={item.color}
+        strokeWidth={item.width}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={item.type === "highlight" ? 0.35 : 1}
+      />
+    ))}
+</svg>
 
              {textItems
   .filter((item) => item.page === selectedPage)
