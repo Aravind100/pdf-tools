@@ -361,23 +361,32 @@ export default function Home() {
                 <h3 className="mt-5 text-lg font-extrabold">{tool.title}</h3>
                 <p className="mt-2 min-h-10 text-sm leading-5 text-slate-500">{tool.desc}</p>
 
-                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <button
-                    type="button"
-                    onClick={() => chooseTool(tool)}
-                    className="inline-flex items-center gap-1 text-sm font-bold text-red-600 hover:text-red-700"
-                  >
-                    Quick tool <ArrowRight size={15}/>
-                  </button>
-                  {tool.href && (
-                    <a
-                      href={tool.href}
-                      className="text-sm font-semibold text-slate-600 underline-offset-4 hover:text-red-600 hover:underline"
-                    >
-                      Open page
-                    </a>
-                  )}
-                </div>
+               <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+  {tool.kind === "editor" ? (
+    <a
+      href="/edit-pdf"
+      className="inline-flex items-center gap-1 text-sm font-bold text-red-600 hover:text-red-700"
+    >
+      Open editor <ArrowRight size={15} />
+    </a>
+  ) : (
+    <button
+      type="button"
+      onClick={() => chooseTool(tool)}
+      className="inline-flex items-center gap-1 text-sm font-bold text-red-600 hover:text-red-700"
+    >
+      Quick tool <ArrowRight size={15} />
+    </button>
+  )}
+  {tool.href && tool.kind !== "editor" && (
+    <a
+      href={tool.href}
+      className="text-sm font-semibold text-slate-600 hover:text-red-600"
+    >
+      Open page
+    </a>
+  )}
+</div>
               </div>
             );
           })}
