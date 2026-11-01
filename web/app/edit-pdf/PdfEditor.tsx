@@ -59,7 +59,9 @@ export default function PdfEditor() {
   const [textValue, setTextValue] = useState("Your text");
   const [fontSize, setFontSize] = useState(20);
   const [textColor, setTextColor] = useState("#111827");
-  const [tool, setTool] = useState<"select" | "text" | "image">("select");
+  const [tool, setTool] = useState<
+  "select" | "text" | "image" | "draw" | "highlight"
+>("select");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [pageOrder, setPageOrder] = useState<number[]>([]);
