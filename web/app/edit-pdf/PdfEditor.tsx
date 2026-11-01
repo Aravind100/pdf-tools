@@ -70,7 +70,7 @@ pdfjs.GlobalWorkerOptions.workerSrc =
   "https://cdn.jsdelivr.net/npm/pdfjs-dist@6.4.299/build/pdf.worker.min.mjs";
 
         const loadingTask = pdfjs.getDocument({
-          data: new Uint8Array(pdfBytes!),
+          data: new Uint8Array(pdfBytes!.slice(0)),
         });
 
         const pdf = await loadingTask.promise;
