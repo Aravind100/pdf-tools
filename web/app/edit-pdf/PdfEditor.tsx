@@ -65,6 +65,7 @@ export default function PdfEditor() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [pageOrder, setPageOrder] = useState<number[]>([]);
+  const pageHeight = 920;
 
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -548,8 +549,12 @@ function stopDrawing() {
                   style={{ width: "650px" }}
                 />
 
-                <svg
-  className="pointer-events-none absolute inset-0 h-full w-full"
+               <svg
+  className="absolute inset-0 h-full w-full touch-none"
+  onPointerDown={startDrawing}
+  onPointerMove={continueDrawing}
+  onPointerUp={stopDrawing}
+  onPointerCancel={stopDrawing}
   viewBox={`0 0 650 ${pageHeight || 920}`}
   preserveAspectRatio="none"
 >
