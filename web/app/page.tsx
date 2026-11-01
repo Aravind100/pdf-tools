@@ -19,7 +19,7 @@ const tools = [
   { title: "Word to PDF", desc: "Convert DOCX documents into PDF files online.", icon: FileText, kind: "docx", color: "red", href: "/word-to-pdf" },
   { title: "JPG to PDF", desc: "Convert one or multiple JPG images into one PDF.", icon: FileImage, kind: "image", color: "blue", href: "/jpg-to-pdf" },
   { title: "PNG to PDF", desc: "Convert one or multiple PNG images into one PDF.", icon: ImageIcon, kind: "image", color: "green", href: "/png-to-pdf" },
-  { title: "Edit PDF", desc: "Edit document content and annotations.", icon: FilePenLine, kind: "editor", color: "purple", href: undefined },
+  { title: "Edit PDF", desc: "Add text, images, signatures and annotations to PDF files online.", icon: FilePenLine, kind: "editor", color: "purple", href: "/edit-pdf" },
   { title: "Merge PDF", desc: "Combine multiple PDF documents into one file.", icon: Files, kind: "merge", color: "orange", href: "/merge-pdf" },
   { title: "Split PDF", desc: "Extract pages or split a document.", icon: Scissors, kind: "planned", color: "teal", href: undefined },
   { title: "Compress PDF", desc: "Reduce PDF file size.", icon: FileDown, kind: "planned", color: "pink", href: undefined },
