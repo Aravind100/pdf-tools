@@ -239,6 +239,49 @@ pdfjs.GlobalWorkerOptions.workerSrc =
     );
   }
 
+  function startDrawing(event: React.PointerEvent<SVGSVGElement>) {
+  if (tool !== "draw" && tool !== "highlight") return;
+
+  const rect = event.currentTarget.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / rect.width) * 650;
+  const y = ((event.clientY - rect.top) / rect.height) * (pageHeight || 920);
+
+  event.currentTarget.setPointerCapture(event.pointerId);
+  setIsDrawing(true);
+
+  setDrawingItems((items) => [
+    ...items,
+    {
+      id: crypto.randomUUID(),
+      page: selectedPage,
+      points: [{ x, y }],
+      color: drawingColor,
+      width: drawingWidth,
+      type: tool,
+    },
+  ]);
+}
+
+function continueDrawing(event: React.PointerEvent<SVGSVGElement>) {
+  if (!isDrawing) return;
+
+  const rect = event.currentTarget.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / rect.width) * 650;
+  const y = ((event.clientY - rect.top) / rect.height) * (pageHeight || 920);
+
+  setDrawingItems((items) =>
+    items.map((item, index) =>
+      index === items.length - 1 && item.page === selectedPage
+        ? { ...item, points: [...item.points, { x, y }] }
+        : item
+    )
+  );
+}
+
+function stopDrawing() {
+  setIsDrawing(false);
+}
+
   function deletePage(index: number) {
     if (pages.length <= 1) {
       setMessage("A PDF must contain at least one page.");
