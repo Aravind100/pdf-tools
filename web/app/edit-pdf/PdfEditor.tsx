@@ -490,7 +490,7 @@ pdfjs.GlobalWorkerOptions.workerSrc =
                   style={{ width: "650px" }}
                 />
 
-              {textItems
+             {textItems
   .filter((item) => item.page === selectedPage)
   .map((item) => (
     <div
@@ -511,22 +511,18 @@ pdfjs.GlobalWorkerOptions.workerSrc =
           return;
         }
 
-        const dx = event.movementX;
-        const dy = event.movementY;
-
         setTextItems((items) =>
           items.map((textItem) =>
             textItem.id === item.id
               ? {
                   ...textItem,
-                  x: Math.max(0, textItem.x + dx),
-                  y: Math.max(0, textItem.y + dy),
+                  x: Math.max(0, textItem.x + event.movementX),
+                  y: Math.max(0, textItem.y + event.movementY),
                 }
               : textItem
           )
         );
       }}
-      onClick={(event) => event.stopPropagation()}
       className={`absolute whitespace-pre-wrap ${
         tool === "select" ? "cursor-move" : "pointer-events-none"
       } ${
@@ -544,9 +540,61 @@ pdfjs.GlobalWorkerOptions.workerSrc =
       }}
     >
       {item.text}
+
+      {tool === "select" && selectedTextId === item.id && (
+        <>
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+
+              setTextItems((items) =>
+                items.filter((textItem) => textItem.id !== item.id)
+              );
+
+              setSelectedTextId(null);
+            }}
+            className="absolute -right-3 -top-3 rounded-full bg-red-600 px-2 py-1 text-xs text-white"
+          >
+            ×
+          </button>
+
+          <button
+            type="button"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              event.stopPropagation();
+
+              if (event.buttons !== 1) return;
+
+              setTextItems((items) =>
+                items.map((textItem) =>
+                  textItem.id === item.id
+                    ? {
+                        ...textItem,
+                        size: Math.max(
+                          6,
+                          Math.min(
+                            100,
+                            textItem.size + event.movementX * 0.3
+                          )
+                        ),
+                      }
+                    : textItem
+                )
+              );
+            }}
+            className="absolute -bottom-2 -right-2 h-4 w-4 cursor-se-resize rounded-full border-2 border-white bg-blue-600"
+            aria-label="Resize text"
+          />
+        </>
+      )}
     </div>
   ))}
-
                 {imageItems
                   .filter((item) => item.page === selectedPage)
                   .map((item) => (
