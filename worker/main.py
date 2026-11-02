@@ -2,6 +2,7 @@
 import os
 import subprocess
 import tempfile
+import zipfile
 from pathlib import Path
 from io import BytesIO
 
@@ -441,6 +442,192 @@ async def compress_pdf(
             )
 
     return pdf_response(pdf_bytes, "compressed.pdf")
+
+
+# Split PDF endpoint
+@app.post("/convert/split-pdf")
+async def split_pdf(
+    file: UploadFile = File(...),
+    mode: str = Form(...),
+    pages: str = Form(""),
+    ranges: str = Form("")
+):
+
+    if mode not in {"extract", "ranges", "every_page"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid split mode."
+        )
+
+    with tempfile.TemporaryDirectory(prefix="pdftools-split-") as tmp:
+        folder = Path(tmp)
+
+        source = await save_upload(
+            file,
+            {".pdf"},
+            folder
+        )
+
+        try:
+            reader = PdfReader(str(source), strict=True)
+
+            if reader.is_encrypted:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Password-protected PDFs are not supported. Please unlock the PDF first."
+                )
+
+            total_pages = len(reader.pages)
+
+            if total_pages == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="The PDF contains no pages."
+                )
+
+            if mode == "extract":
+                try:
+                    selected_pages = [
+                        int(item.strip())
+                        for item in pages.split(",")
+                        if item.strip()
+                    ]
+                except ValueError:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Enter valid page numbers separated by commas."
+                    )
+
+                if not selected_pages:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Please enter the pages you want to extract."
+                    )
+
+                if len(selected_pages) != len(set(selected_pages)):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Duplicate page numbers are not allowed."
+                    )
+
+                if any(p < 1 or p > total_pages for p in selected_pages):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Enter page numbers between 1 and {total_pages}."
+                    )
+
+                page_groups = [selected_pages]
+
+            elif mode == "ranges":
+                page_groups = []
+
+                try:
+                    for item in ranges.split(","):
+                        item = item.strip()
+
+                        if not item:
+                            continue
+
+                        if "-" not in item:
+                            page_number = int(item)
+                            start = end = page_number
+                        else:
+                            parts = item.split("-")
+
+                            if len(parts) != 2:
+                                raise ValueError()
+
+                            start = int(parts[0].strip())
+                            end = int(parts[1].strip())
+
+                        if start < 1 or end > total_pages or start > end:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Invalid page range: {item}. This PDF has {total_pages} pages."
+                            )
+
+                        page_groups.append(list(range(start, end + 1)))
+
+                except ValueError:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Enter ranges like 1-3,4-6,7-10."
+                    )
+
+                if not page_groups:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Please enter at least one page range."
+                    )
+
+            else:
+                page_groups = [
+                    [page_number]
+                    for page_number in range(1, total_pages + 1)
+                ]
+
+            if len(page_groups) > 100:
+                raise HTTPException(
+                    status_code=400,
+                    detail="A maximum of 100 output PDF files is supported."
+                )
+
+            zip_buffer = BytesIO()
+
+            with zipfile.ZipFile(
+                zip_buffer,
+                mode="w",
+                compression=zipfile.ZIP_DEFLATED
+            ) as archive:
+
+                for index, page_group in enumerate(page_groups, start=1):
+                    writer = PdfWriter()
+
+                    for page_number in page_group:
+                        writer.add_page(reader.pages[page_number - 1])
+
+                    pdf_buffer = BytesIO()
+                    writer.write(pdf_buffer)
+                    writer.close()
+
+                    if mode == "extract":
+                        filename = "extracted-pages.pdf"
+                    elif mode == "every_page":
+                        filename = f"page-{page_group[0]}.pdf"
+                    else:
+                        filename = (
+                            f"split-part-{index}-pages-"
+                            f"{page_group[0]}-{page_group[-1]}.pdf"
+                        )
+
+                    archive.writestr(
+                        filename,
+                        pdf_buffer.getvalue()
+                    )
+
+                    pdf_buffer.close()
+
+            reader.close()
+
+            zip_bytes = zip_buffer.getvalue()
+            zip_buffer.close()
+
+        except HTTPException:
+            raise
+
+        except Exception:
+            raise HTTPException(
+                status_code=422,
+                detail="Could not split this PDF. The file may be damaged or unsupported."
+            )
+
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": 'attachment; filename="split-pdf.zip"'
+        }
+    )
 
 
 # Existing Gujarati-compatible Word-to-PDF endpoint
