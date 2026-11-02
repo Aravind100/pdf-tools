@@ -34,30 +34,33 @@ function formatSize(bytes: number) {
 
 const compressionOptions = [
   {
-    id: "high" as const,
+    id: "high",
     title: "High Quality",
     description: "Less compression, better quality.",
     detail: "Best for documents requiring clear images.",
     icon: Leaf,
-    color: "blue",
+    selectedClass: "border-blue-500 bg-blue-50",
+    iconClass: "text-blue-600",
   },
   {
-    id: "recommended" as const,
+    id: "recommended",
     title: "Recommended",
     description: "Balanced size and quality.",
     detail: "Suitable for everyday PDF documents.",
     icon: Layers,
-    color: "green",
+    selectedClass: "border-green-600 bg-green-50",
+    iconClass: "text-green-600",
   },
   {
-    id: "maximum" as const,
+    id: "maximum",
     title: "Maximum Compression",
     description: "Smaller file, potentially lower quality.",
     detail: "Best when reducing file size is the priority.",
     icon: Gauge,
-    color: "purple",
+    selectedClass: "border-purple-500 bg-purple-50",
+    iconClass: "text-purple-600",
   },
-];
+] as const;
 
 export default function CompressPdfTool() {
   const [file, setFile] = useState<File | null>(null);
@@ -111,7 +114,6 @@ export default function CompressPdfTool() {
 
     setBusy(true);
     setMessage("Uploading and compressing your PDF...");
-
     setResult(null);
 
     try {
@@ -184,7 +186,6 @@ export default function CompressPdfTool() {
     if (!result) return;
 
     const url = URL.createObjectURL(result.blob);
-
     const link = document.createElement("a");
 
     link.href = url;
@@ -194,7 +195,7 @@ export default function CompressPdfTool() {
     link.click();
     link.remove();
 
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function resetTool() {
@@ -241,7 +242,7 @@ export default function CompressPdfTool() {
         </p>
       </div>
 
-      {/* Hidden file input */}
+      {/* File input */}
 
       <input
         ref={inputRef}
@@ -289,9 +290,7 @@ export default function CompressPdfTool() {
             </p>
 
             <p className="mt-1 text-sm text-slate-600">
-              PDF Document
-              {" · "}
-              {formatSize(file.size)}
+              PDF Document · {formatSize(file.size)}
             </p>
           </div>
 
@@ -329,24 +328,6 @@ export default function CompressPdfTool() {
               const selected = level === option.id;
               const Icon = option.icon;
 
-              const colorClasses = {
-                blue: selected
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-slate-200 hover:border-blue-300",
-                green: selected
-                  ? "border-green-600 bg-green-50"
-                  : "border-slate-200 hover:border-green-300",
-                purple: selected
-                  ? "border-purple-500 bg-purple-50"
-                  : "border-slate-200 hover:border-purple-300",
-              };
-
-              const iconColors = {
-                blue: "text-blue-600",
-                green: "text-green-600",
-                purple: "text-purple-600",
-              };
-
               return (
                 <button
                   key={option.id}
@@ -358,7 +339,11 @@ export default function CompressPdfTool() {
                   }}
                   disabled={busy}
                   aria-pressed={selected}
-                  className={`relative rounded-2xl border-2 p-5 text-left transition-all hover:shadow-md disabled:opacity-50 ${colorClasses[option.color]}`}
+                  className={`relative rounded-2xl border-2 p-5 text-left transition-all hover:shadow-md disabled:opacity-50 ${
+                    selected
+                      ? option.selectedClass
+                      : "border-slate-200 bg-white hover:border-slate-400"
+                  }`}
                 >
                   {option.id === "recommended" && (
                     <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-green-600 px-4 py-1 text-xs font-bold text-white shadow">
@@ -369,7 +354,7 @@ export default function CompressPdfTool() {
                   <div className="flex items-center justify-between">
                     <Icon
                       size={32}
-                      className={iconColors[option.color]}
+                      className={option.iconClass}
                     />
 
                     <span
@@ -414,10 +399,7 @@ export default function CompressPdfTool() {
         >
           {busy ? (
             <>
-              <RefreshCw
-                size={22}
-                className="animate-spin"
-              />
+              <RefreshCw size={22} className="animate-spin" />
               Compressing PDF...
             </>
           ) : (
@@ -441,7 +423,7 @@ export default function CompressPdfTool() {
         </div>
       )}
 
-      {/* Compression results */}
+      {/* Results */}
 
       {result && (
         <div className="mt-8 rounded-2xl border border-green-200 bg-green-50/60 p-5 sm:p-7">
@@ -559,8 +541,8 @@ export default function CompressPdfTool() {
 
       <p className="mt-5 text-center text-xs leading-5 text-slate-400">
         Maximum upload size: 100 MB. Compression results depend
-        on the PDF content and selected compression level.
-        Image quality may change with stronger compression.
+        on PDF content and selected compression level. Image
+        quality may change with stronger compression.
         Password-protected PDFs are not supported.
       </p>
     </div>
