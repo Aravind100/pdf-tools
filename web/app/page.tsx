@@ -23,7 +23,7 @@ const tools = [
   { title: "Merge PDF", desc: "Combine multiple PDF documents into one file.", icon: Files, kind: "merge", color: "orange", href: "/merge-pdf" },
  { title: "Split PDF", desc: "Extract selected pages or split a PDF into multiple files.", icon: Scissors, kind: "planned", color: "teal", href: "/split-pdf" },
 { title: "Compress PDF", desc: "Reduce PDF file size while maintaining document quality.", icon: FileDown, kind: "planned", color: "pink", href: "/compress-pdf" },
-{ title: "Protect PDF", desc: "Add password protection to PDFs.", icon: ShieldCheck, kind: "planned", color: "indigo", href: undefined },
+{ title: "Protect PDF", desc: "Add AES-256 password protection to PDF documents.", icon: ShieldCheck, kind: "planned", color: "indigo", href: "/protect-pdf" },
 ];
 
 const homepageFaqs = [
@@ -285,6 +285,7 @@ export default function Home() {
             <a href="/merge-pdf" className="hover:text-red-600">Merge PDF</a>
             <a href="/split-pdf" className="text-red-600 hover:underline">Split PDF</a>
 <a href="/compress-pdf" className="text-red-600 hover:underline">Compress PDF</a>
+            <a href="/protect-pdf" className="text-red-600 hover:underline">Protect PDF</a>
             <a href="#faqs" className="hover:text-red-600">FAQs</a>
           </nav>
 
@@ -304,6 +305,9 @@ export default function Home() {
             <a onClick={() => setMobileOpen(false)} href="/jpg-to-pdf">JPG to PDF</a>
             <a onClick={() => setMobileOpen(false)} href="/png-to-pdf">PNG to PDF</a>
             <a onClick={() => setMobileOpen(false)} href="/merge-pdf">Merge PDF</a>
+            <a onClick={() => setMobileOpen(false)} href="/split-pdf">Split PDF</a>
+<a onClick={() => setMobileOpen(false)} href="/compress-pdf">Compress PDF</a>
+<a onClick={() => setMobileOpen(false)} href="/protect-pdf">Protect PDF</a>
             <a onClick={() => setMobileOpen(false)} href="#how">How it works</a>
             <a onClick={() => setMobileOpen(false)} href="#faqs">FAQs</a>
             <a onClick={() => setMobileOpen(false)} href="#privacy">Privacy</a>
@@ -404,6 +408,9 @@ export default function Home() {
             <a href="/jpg-to-pdf" className="text-red-600 hover:underline">JPG to PDF</a>
             <a href="/png-to-pdf" className="text-red-600 hover:underline">PNG to PDF</a>
             <a href="/merge-pdf" className="text-red-600 hover:underline">Merge PDF</a>
+            <a href="/split-pdf" className="text-red-600 hover:underline">Split PDF</a>
+<a href="/compress-pdf" className="text-red-600 hover:underline">Compress PDF</a>
+<a href="/protect-pdf" className="text-red-600 hover:underline">Protect PDF</a>
           </div>
         </div>
       </section>
@@ -699,6 +706,9 @@ export default function Home() {
           <a href="/jpg-to-pdf" className="hover:text-red-600">JPG to PDF</a>
           <a href="/png-to-pdf" className="hover:text-red-600">PNG to PDF</a>
           <a href="/merge-pdf" className="hover:text-red-600">Merge PDF</a>
+          <a href="/split-pdf" className="text-red-600" >Split PDF</a>
+<a href="/compress-pdf" className="text-red-600 ">Compress PDF</a>
+<a href="/protect-pdf" className="text-red-600 ">Protect PDF</a>
         </nav>
         © {new Date().getFullYear()} PDF Tools. All rights reserved.
       </footer>
