@@ -332,6 +332,60 @@ async def merge_pdf(files: list[UploadFile] = File(...)):
     return pdf_response(pdf_bytes, "merged.pdf")
 
 
+# Compress PDF endpoint
+@app.post("/convert/compress-pdf")
+async def compress_pdf(file: UploadFile = File(...)):
+
+    with tempfile.TemporaryDirectory(prefix="pdftools-compress-") as tmp:
+        folder = Path(tmp)
+
+        source = await save_upload(
+            file,
+            {".pdf"},
+            folder
+        )
+
+        try:
+            reader = PdfReader(str(source), strict=True)
+
+            if reader.is_encrypted:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Password-protected PDFs are not supported. Please unlock the PDF first."
+                )
+
+            if len(reader.pages) == 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="The PDF contains no pages."
+                )
+
+            writer = PdfWriter()
+            writer.append(reader)
+
+            # Lossless compression of PDF page content streams
+            for page in writer.pages:
+                page.compress_content_streams()
+
+            output_buffer = BytesIO()
+            writer.write(output_buffer)
+            pdf_bytes = output_buffer.getvalue()
+
+            writer.close()
+            reader.close()
+
+        except HTTPException:
+            raise
+
+        except Exception:
+            raise HTTPException(
+                status_code=422,
+                detail="Could not compress this PDF. The file may be damaged or unsupported."
+            )
+
+    return pdf_response(pdf_bytes, "compressed.pdf")
+
+
 # Existing Gujarati-compatible Word-to-PDF endpoint
 @app.post("/convert/docx-to-pdf")
 async def docx_to_pdf(file: UploadFile = File(...)):
