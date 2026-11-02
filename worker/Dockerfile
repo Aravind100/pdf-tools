@@ -4,6 +4,7 @@ FROM python:3.11-slim
 # Install LibreOffice and fonts, including Gujarati Unicode support
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice-writer \
+     ghostscript \
     fonts-liberation \
     fonts-dejavu-core \
     fonts-noto-core \
