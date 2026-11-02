@@ -283,6 +283,8 @@ export default function Home() {
             <a href="/word-to-pdf" className="hover:text-red-600">Word to PDF</a>
             <a href="/images-to-pdf" className="hover:text-red-600">Images to PDF</a>
             <a href="/merge-pdf" className="hover:text-red-600">Merge PDF</a>
+            <a href="/split-pdf" className="text-red-600 hover:underline">Split PDF</a>
+<a href="/compress-pdf" className="text-red-600 hover:underline">Compress PDF</a>
             <a href="#faqs" className="hover:text-red-600">FAQs</a>
           </nav>
 
