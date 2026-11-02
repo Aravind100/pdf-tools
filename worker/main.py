@@ -444,6 +444,75 @@ async def compress_pdf(
     return pdf_response(pdf_bytes, "compressed.pdf")
 
 
+# Protect PDF endpoint
+@app.post("/convert/protect-pdf")
+async def protect_pdf(
+    file: UploadFile = File(...),
+    password: str = Form(...)
+):
+    if len(password) < 6:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must contain at least 6 characters."
+        )
+
+    if len(password) > 128:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must not exceed 128 characters."
+        )
+
+    with tempfile.TemporaryDirectory(prefix="pdftools-protect-") as tmp:
+        folder = Path(tmp)
+
+        source = await save_upload(file, {".pdf"}, folder)
+
+        try:
+            reader = PdfReader(str(source), strict=True)
+
+            if reader.is_encrypted:
+                reader.close()
+                raise HTTPException(
+                    status_code=400,
+                    detail="This PDF is already password-protected. Please upload an unlocked PDF."
+                )
+
+            if len(reader.pages) == 0:
+                reader.close()
+                raise HTTPException(
+                    status_code=400,
+                    detail="The uploaded PDF contains no pages."
+                )
+
+            writer = PdfWriter()
+            writer.append_pages_from_reader(reader)
+
+            writer.encrypt(
+                user_password=password,
+                algorithm="AES-256"
+            )
+
+            output_buffer = BytesIO()
+            writer.write(output_buffer)
+
+            writer.close()
+            reader.close()
+
+            protected_pdf = output_buffer.getvalue()
+            output_buffer.close()
+
+        except HTTPException:
+            raise
+
+        except Exception:
+            raise HTTPException(
+                status_code=422,
+                detail="Unable to protect this PDF. Please check that the file is a valid PDF."
+            )
+
+    return pdf_response(protected_pdf, "protected.pdf")
+
+
 # Split PDF endpoint
 @app.post("/convert/split-pdf")
 async def split_pdf(
