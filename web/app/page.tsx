@@ -21,9 +21,9 @@ const tools = [
   { title: "PNG to PDF", desc: "Convert one or multiple PNG images into one PDF.", icon: ImageIcon, kind: "image", color: "green", href: "/png-to-pdf" },
   { title: "Edit PDF", desc: "Add text, images, signatures and annotations to PDF files online.", icon: FilePenLine, kind: "editor", color: "purple", href: "/edit-pdf" },
   { title: "Merge PDF", desc: "Combine multiple PDF documents into one file.", icon: Files, kind: "merge", color: "orange", href: "/merge-pdf" },
-  { title: "Split PDF", desc: "Extract pages or split a document.", icon: Scissors, kind: "planned", color: "teal", href: undefined },
-  { title: "Compress PDF", desc: "Reduce PDF file size.", icon: FileDown, kind: "planned", color: "pink", href: undefined },
-  { title: "Protect PDF", desc: "Add password protection to PDFs.", icon: ShieldCheck, kind: "planned", color: "indigo", href: undefined },
+ { title: "Split PDF", desc: "Extract selected pages or split a PDF into multiple files.", icon: Scissors, kind: "planned", color: "teal", href: "/split-pdf" },
+{ title: "Compress PDF", desc: "Reduce PDF file size while maintaining document quality.", icon: FileDown, kind: "planned", color: "pink", href: "/compress-pdf" },
+{ title: "Protect PDF", desc: "Add password protection to PDFs.", icon: ShieldCheck, kind: "planned", color: "indigo", href: undefined },
 ];
 
 const homepageFaqs = [
