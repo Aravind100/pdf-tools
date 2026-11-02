@@ -2,13 +2,27 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { UploadCloud, FileText, Download, RefreshCw } from "lucide-react";
+import {
+  UploadCloud,
+  FileText,
+  Download,
+  RefreshCw,
+  Leaf,
+  Layers,
+  Gauge,
+  ShieldCheck,
+  Zap,
+  Infinity,
+  X,
+} from "lucide-react";
 
 const API =
   process.env.NEXT_PUBLIC_CONVERTER_API_URL ||
   "http://localhost:8000";
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
+
+type CompressionLevel = "high" | "recommended" | "maximum";
 
 function formatSize(bytes: number) {
   if (bytes < 1024 * 1024) {
@@ -18,10 +32,42 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+const compressionOptions = [
+  {
+    id: "high" as const,
+    title: "High Quality",
+    description: "Less compression, better quality.",
+    detail: "Best for documents requiring clear images.",
+    icon: Leaf,
+    color: "blue",
+  },
+  {
+    id: "recommended" as const,
+    title: "Recommended",
+    description: "Balanced size and quality.",
+    detail: "Suitable for everyday PDF documents.",
+    icon: Layers,
+    color: "green",
+  },
+  {
+    id: "maximum" as const,
+    title: "Maximum Compression",
+    description: "Smaller file, potentially lower quality.",
+    detail: "Best when reducing file size is the priority.",
+    icon: Gauge,
+    color: "purple",
+  },
+];
+
 export default function CompressPdfTool() {
   const [file, setFile] = useState<File | null>(null);
+
+  const [level, setLevel] =
+    useState<CompressionLevel>("recommended");
+
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+
   const [result, setResult] = useState<{
     blob: Blob;
     originalSize: number;
@@ -64,11 +110,15 @@ export default function CompressPdfTool() {
     }
 
     setBusy(true);
-    setMessage("Uploading and optimizing your PDF...");
+    setMessage("Uploading and compressing your PDF...");
+
+    setResult(null);
 
     try {
       const form = new FormData();
+
       form.append("file", file);
+      form.append("level", level);
 
       const response = await fetch(
         `${API}/convert/compress-pdf`,
@@ -80,15 +130,19 @@ export default function CompressPdfTool() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
+
         throw new Error(
-          data.detail || "PDF compression failed. Please try again."
+          data.detail ||
+            "PDF compression failed. Please try again."
         );
       }
 
       const blob = await response.blob();
 
       if (blob.size === 0) {
-        throw new Error("The compression service returned an empty file.");
+        throw new Error(
+          "The compression service returned an empty file."
+        );
       }
 
       setResult({
@@ -100,15 +154,19 @@ export default function CompressPdfTool() {
       const difference = file.size - blob.size;
 
       if (difference > 0) {
-        const percentage = (difference / file.size) * 100;
+        const percentage =
+          (difference / file.size) * 100;
+
         setMessage(
-          `Success! Your PDF is ${percentage.toFixed(1)}% smaller.`
+          `Success! Your PDF size was reduced by ${percentage.toFixed(1)}%.`
         );
       } else if (difference === 0) {
-        setMessage("PDF processed successfully. File size is unchanged.");
+        setMessage(
+          "PDF processed successfully. File size is unchanged."
+        );
       } else {
         setMessage(
-          "PDF processed successfully, but the optimized file is slightly larger. No size reduction was achieved."
+          "PDF processed successfully, but the resulting file is larger. No size reduction was achieved."
         );
       }
     } catch (error) {
@@ -126,10 +184,12 @@ export default function CompressPdfTool() {
     if (!result) return;
 
     const url = URL.createObjectURL(result.blob);
+
     const link = document.createElement("a");
 
     link.href = url;
     link.download = "compressed.pdf";
+
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -141,6 +201,7 @@ export default function CompressPdfTool() {
     setFile(null);
     setResult(null);
     setMessage("");
+    setLevel("recommended");
 
     if (inputRef.current) {
       inputRef.current.value = "";
@@ -156,21 +217,31 @@ export default function CompressPdfTool() {
       ? (savedBytes / result.originalSize) * 100
       : 0;
 
+  const selectedOption = compressionOptions.find(
+    (option) => option.id === level
+  );
+
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg sm:p-8">
-      <div className="text-center">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-red-50 text-red-600">
-          <FileText size={30} />
+    <div className="mx-auto w-full max-w-5xl rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-8">
+
+      {/* Heading */}
+
+      <div className="mb-8 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+          <FileText size={34} />
         </div>
 
-        <h2 className="mt-4 text-2xl font-black">
-          Compress PDF File
+        <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-900">
+          Compress PDF
         </h2>
 
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Optimize your PDF file and download the processed document.
+        <p className="mt-3 text-sm leading-6 text-slate-500 sm:text-base">
+          Reduce your PDF file size and keep good quality.
+          Choose a compression level that fits your needs.
         </p>
       </div>
+
+      {/* Hidden file input */}
 
       <input
         ref={inputRef}
@@ -183,125 +254,313 @@ export default function CompressPdfTool() {
         }
       />
 
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-        className="mt-7 flex w-full flex-col items-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center transition hover:border-red-400 hover:bg-red-50/30 disabled:opacity-50"
-      >
-        <UploadCloud size={38} className="text-red-600" />
+      {/* Upload section */}
 
-        <span className="mt-3 font-bold">
-          Choose PDF file
-        </span>
+      {!file ? (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className="flex w-full flex-col items-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-12 text-center transition hover:border-red-400 hover:bg-red-50/30 disabled:opacity-50"
+        >
+          <UploadCloud size={42} className="text-red-600" />
 
-        <span className="mt-1 text-sm text-slate-500">
-          Select one PDF from your device (maximum 100 MB)
-        </span>
-      </button>
+          <span className="mt-4 text-lg font-bold text-slate-900">
+            Choose PDF File
+          </span>
 
-      {file && (
-        <div className="mt-5 flex items-center gap-3 rounded-xl border border-slate-200 p-4">
-          <FileText size={28} className="shrink-0 text-red-600" />
+          <span className="mt-2 text-sm text-slate-500">
+            Select a PDF from your device
+          </span>
+
+          <span className="mt-2 text-xs text-slate-400">
+            Maximum file size: 100 MB
+          </span>
+        </button>
+      ) : (
+        <div className="flex flex-col gap-4 rounded-2xl border border-blue-200 bg-blue-50/50 p-5 sm:flex-row sm:items-center">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
+            <FileText size={30} />
+          </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold">
+            <p className="truncate font-bold text-slate-900">
               {file.name}
             </p>
-            <p className="text-xs text-slate-500">
-              Original size: {formatSize(file.size)}
+
+            <p className="mt-1 text-sm text-slate-600">
+              PDF Document
+              {" · "}
+              {formatSize(file.size)}
             </p>
           </div>
 
           <button
             type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+            className="rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-blue-50 disabled:opacity-50"
+          >
+            Change File
+          </button>
+
+          <button
+            type="button"
             onClick={resetTool}
             disabled={busy}
-            className="text-sm font-semibold text-red-600"
+            aria-label="Remove selected PDF"
+            className="rounded-xl p-2 text-slate-500 hover:bg-white hover:text-red-600"
           >
-            Remove
+            <X size={20} />
           </button>
         </div>
       )}
 
-      <button
-        type="button"
-        disabled={busy || !file}
-        onClick={compressPdf}
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3.5 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-      >
-        {busy ? (
-          <>
-            <RefreshCw size={18} className="animate-spin" />
-            Processing PDF...
-          </>
-        ) : (
-          <>
-            <FileText size={18} />
-            Compress PDF
-          </>
-        )}
-      </button>
+      {/* Compression options */}
 
-      {message && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="mt-4 rounded-xl bg-slate-100 p-3 text-sm text-slate-700"
-        >
-          {message}
-        </p>
+      {file && (
+        <div className="mt-9">
+          <h3 className="mb-5 text-xl font-black text-slate-900">
+            Select Compression Level
+          </h3>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {compressionOptions.map((option) => {
+              const selected = level === option.id;
+              const Icon = option.icon;
+
+              const colorClasses = {
+                blue: selected
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-slate-200 hover:border-blue-300",
+                green: selected
+                  ? "border-green-600 bg-green-50"
+                  : "border-slate-200 hover:border-green-300",
+                purple: selected
+                  ? "border-purple-500 bg-purple-50"
+                  : "border-slate-200 hover:border-purple-300",
+              };
+
+              const iconColors = {
+                blue: "text-blue-600",
+                green: "text-green-600",
+                purple: "text-purple-600",
+              };
+
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => {
+                    setLevel(option.id);
+                    setResult(null);
+                    setMessage("");
+                  }}
+                  disabled={busy}
+                  aria-pressed={selected}
+                  className={`relative rounded-2xl border-2 p-5 text-left transition-all hover:shadow-md disabled:opacity-50 ${colorClasses[option.color]}`}
+                >
+                  {option.id === "recommended" && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-green-600 px-4 py-1 text-xs font-bold text-white shadow">
+                      Popular
+                    </span>
+                  )}
+
+                  <div className="flex items-center justify-between">
+                    <Icon
+                      size={32}
+                      className={iconColors[option.color]}
+                    />
+
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                        selected
+                          ? "border-green-600 bg-green-600"
+                          : "border-slate-400 bg-white"
+                      }`}
+                    >
+                      {selected && (
+                        <span className="h-2 w-2 rounded-full bg-white" />
+                      )}
+                    </span>
+                  </div>
+
+                  <h4 className="mt-4 text-base font-black text-slate-900">
+                    {option.title}
+                  </h4>
+
+                  <p className="mt-2 text-sm font-medium text-slate-700">
+                    {option.description}
+                  </p>
+
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    {option.detail}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      {result && (
-        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <h3 className="font-black">Compression Results</h3>
+      {/* Compress button */}
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-white p-3">
-              <p className="text-xs text-slate-500">Original size</p>
-              <p className="mt-1 font-bold">
+      {file && !result && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={compressPdf}
+          className="mx-auto mt-9 flex w-full max-w-md items-center justify-center gap-3 rounded-2xl bg-green-600 px-6 py-4 text-lg font-black text-white shadow-lg transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+        >
+          {busy ? (
+            <>
+              <RefreshCw
+                size={22}
+                className="animate-spin"
+              />
+              Compressing PDF...
+            </>
+          ) : (
+            <>
+              <Download size={22} />
+              Compress PDF
+            </>
+          )}
+        </button>
+      )}
+
+      {/* Status message */}
+
+      {message && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm font-medium text-slate-700"
+        >
+          {message}
+        </div>
+      )}
+
+      {/* Compression results */}
+
+      {result && (
+        <div className="mt-8 rounded-2xl border border-green-200 bg-green-50/60 p-5 sm:p-7">
+          <div className="text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-green-700">
+              <ShieldCheck size={32} />
+            </div>
+
+            <h3 className="mt-3 text-2xl font-black text-slate-900">
+              PDF Processing Complete
+            </h3>
+
+            <p className="mt-2 text-sm text-slate-600">
+              Compression level: {selectedOption?.title}
+            </p>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <p className="text-sm text-slate-500">
+                Original File Size
+              </p>
+
+              <p className="mt-2 text-2xl font-black text-slate-900">
                 {formatSize(result.originalSize)}
               </p>
             </div>
 
-            <div className="rounded-xl bg-white p-3">
-              <p className="text-xs text-slate-500">Processed size</p>
-              <p className="mt-1 font-bold">
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <p className="text-sm text-slate-500">
+                Processed File Size
+              </p>
+
+              <p className="mt-2 text-2xl font-black text-green-700">
                 {formatSize(result.compressedSize)}
               </p>
             </div>
           </div>
 
-          {savedBytes > 0 && (
-            <p className="mt-4 text-sm font-bold text-green-700">
-              Space saved: {formatSize(savedBytes)} (
-              {savedPercentage.toFixed(1)}%)
+          {savedBytes > 0 ? (
+            <div className="mt-5 rounded-xl bg-green-100 p-5 text-center">
+              <p className="text-sm font-semibold text-green-800">
+                Space Saved
+              </p>
+
+              <p className="mt-1 text-3xl font-black text-green-800">
+                {savedPercentage.toFixed(1)}%
+              </p>
+
+              <p className="mt-1 text-sm text-green-800">
+                {formatSize(savedBytes)} smaller
+              </p>
+            </div>
+          ) : (
+            <p className="mt-5 rounded-xl bg-white p-4 text-center text-sm text-slate-600">
+              {savedBytes === 0
+                ? "The processed file size is unchanged."
+                : "The processed file is larger. No size reduction was achieved."}
             </p>
           )}
 
           <button
             type="button"
             onClick={downloadPdf}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3 font-bold text-white hover:bg-green-700"
+            className="mt-6 flex w-full items-center justify-center gap-3 rounded-xl bg-green-600 px-5 py-4 text-lg font-black text-white shadow-md hover:bg-green-700"
           >
-            <Download size={18} />
+            <Download size={22} />
             Download Compressed PDF
           </button>
 
           <button
             type="button"
             onClick={resetTool}
-            className="mt-3 w-full rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-white"
+            className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-5 py-3 font-bold text-slate-700 hover:bg-slate-50"
           >
+            <RefreshCw size={16} className="mr-2 inline" />
             Compress Another PDF
           </button>
         </div>
       )}
 
-      <p className="mt-5 text-center text-xs leading-5 text-slate-500">
-        Maximum upload size: 100 MB. This tool performs lossless
-        content-stream optimization. Image quality is not deliberately reduced.
+      {/* Trust information */}
+
+      <div className="mt-9 grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-3">
+        <div className="flex items-center gap-3">
+          <ShieldCheck size={27} className="shrink-0 text-green-600" />
+          <div>
+            <p className="font-bold text-slate-900">Secure</p>
+            <p className="text-xs text-slate-500">
+              Files processed temporarily.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Zap size={27} className="shrink-0 text-green-600" />
+          <div>
+            <p className="font-bold text-slate-900">Fast</p>
+            <p className="text-xs text-slate-500">
+              Optimized processing.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Infinity size={27} className="shrink-0 text-green-600" />
+          <div>
+            <p className="font-bold text-slate-900">Free</p>
+            <p className="text-xs text-slate-500">
+              No registration required.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <p className="mt-5 text-center text-xs leading-5 text-slate-400">
+        Maximum upload size: 100 MB. Compression results depend
+        on the PDF content and selected compression level.
+        Image quality may change with stronger compression.
         Password-protected PDFs are not supported.
       </p>
     </div>
