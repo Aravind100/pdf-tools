@@ -337,31 +337,39 @@ async def merge_pdf(files: list[UploadFile] = File(...)):
 
 
 # Adaptive Compress PDF endpoint
+
+
+# Optimized single-pass Compress PDF endpoint
 @app.post("/convert/compress-pdf")
 async def compress_pdf(
     file: UploadFile = File(...),
     level: str = Form("recommended")
 ):
-    compression_profiles = {
-        "high": [
-            ("/printer", 220, 90),
-            ("/ebook", 180, 85),
-        ],
-        "recommended": [
-            ("/ebook", 150, 80),
-            ("/ebook", 120, 75),
-        ],
-        "maximum": [
-            ("/screen", 96, 65),
-            ("/screen", 72, 55),
-        ],
+    compression_settings = {
+        "high": {
+            "preset": "/printer",
+            "resolution": 220,
+            "jpeg_quality": 90,
+        },
+        "recommended": {
+            "preset": "/ebook",
+            "resolution": 150,
+            "jpeg_quality": 80,
+        },
+        "maximum": {
+            "preset": "/screen",
+            "resolution": 96,
+            "jpeg_quality": 65,
+        },
     }
 
-    if level not in compression_profiles:
+    if level not in compression_settings:
         raise HTTPException(
             status_code=400,
             detail="Invalid compression level. Choose high, recommended or maximum."
         )
+
+    settings = compression_settings[level]
 
     with tempfile.TemporaryDirectory(prefix="pdftools-compress-") as tmp:
         folder = Path(tmp)
@@ -372,9 +380,10 @@ async def compress_pdf(
             folder
         )
 
-        try:
-            original_size = source.stat().st_size
+        original_size = source.stat().st_size
+        output = folder / "compressed.pdf"
 
+        try:
             reader = PdfReader(str(source), strict=True)
 
             if reader.is_encrypted:
@@ -385,108 +394,94 @@ async def compress_pdf(
                 )
 
             original_pages = len(reader.pages)
+            reader.close()
 
             if original_pages == 0:
-                reader.close()
                 raise HTTPException(
                     status_code=400,
                     detail="The PDF contains no pages."
                 )
 
-            reader.close()
+            command = [
+                "gs",
+                "-sDEVICE=pdfwrite",
+                "-dCompatibilityLevel=1.4",
+                f"-dPDFSETTINGS={settings['preset']}",
+                "-dNOPAUSE",
+                "-dBATCH",
+                "-dSAFER",
+                "-dDetectDuplicateImages=true",
+                "-dCompressFonts=true",
+                "-dSubsetFonts=true",
+                "-dDownsampleColorImages=true",
+                "-dColorImageDownsampleType=/Bicubic",
+                f"-dColorImageResolution={settings['resolution']}",
+                "-dDownsampleGrayImages=true",
+                "-dGrayImageDownsampleType=/Bicubic",
+                f"-dGrayImageResolution={settings['resolution']}",
+                "-dDownsampleMonoImages=true",
+                "-dMonoImageResolution=300",
+                f"-dJPEGQ={settings['jpeg_quality']}",
+                f"-sOutputFile={output}",
+                str(source),
+            ]
 
-            best_pdf_bytes = None
-            best_size = original_size
-            successful_attempts = 0
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False
+            )
 
-            for index, profile in enumerate(
-                compression_profiles[level],
-                start=1
-            ):
-                preset, image_resolution, jpeg_quality = profile
+            if result.returncode != 0 or not output.exists():
+                raise HTTPException(
+                    status_code=422,
+                    detail="Could not compress this PDF. Please try another file."
+                )
 
-                output = folder / f"compressed-{index}.pdf"
+            if output.stat().st_size == 0:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Compression produced an empty PDF."
+                )
 
-                command = [
-                    "gs",
-                    "-sDEVICE=pdfwrite",
-                    "-dCompatibilityLevel=1.4",
-                    f"-dPDFSETTINGS={preset}",
-                    "-dNOPAUSE",
-                    "-dBATCH",
-                    "-dSAFER",
-                    "-dDetectDuplicateImages=true",
-                    "-dCompressFonts=true",
-                    "-dSubsetFonts=true",
-                    "-dDownsampleColorImages=true",
-                    "-dColorImageDownsampleType=/Bicubic",
-                    f"-dColorImageResolution={image_resolution}",
-                    "-dDownsampleGrayImages=true",
-                    "-dGrayImageDownsampleType=/Bicubic",
-                    f"-dGrayImageResolution={image_resolution}",
-                    "-dDownsampleMonoImages=true",
-                    "-dMonoImageResolution=300",
-                    f"-dJPEGQ={jpeg_quality}",
-                    f"-sOutputFile={output}",
-                    str(source),
-                ]
+            compressed_size = output.stat().st_size
 
-                try:
-                    result = subprocess.run(
-                        command,
-                        capture_output=True,
-                        text=True,
-                        timeout=180,
-                        check=False
-                    )
-
-                except subprocess.TimeoutExpired:
-                    continue
-
-                if result.returncode != 0 or not output.exists():
-                    continue
-
-                candidate_size = output.stat().st_size
-
-                if candidate_size == 0 or candidate_size >= best_size:
-                    continue
-
-                try:
-                    candidate_bytes = output.read_bytes()
-
-                    check_reader = PdfReader(
-                        BytesIO(candidate_bytes),
-                        strict=True
-                    )
-
-                    if (
-                        check_reader.is_encrypted
-                        or len(check_reader.pages) != original_pages
-                    ):
-                        check_reader.close()
-                        continue
-
-                    check_reader.close()
-
-                    best_pdf_bytes = candidate_bytes
-                    best_size = candidate_size
-                    successful_attempts += 1
-
-                except Exception:
-                    continue
-
-            if best_pdf_bytes is None:
+            if compressed_size >= original_size:
                 raise HTTPException(
                     status_code=422,
                     detail=(
                         "This PDF is already optimized or cannot be "
-                        "compressed further without changing its quality. "
-                        "The original file has not been replaced."
+                        "compressed further using this quality setting. "
+                        "Your original file has not been changed."
                     )
                 )
 
+            pdf_bytes = output.read_bytes()
+
+            check_reader = PdfReader(BytesIO(pdf_bytes), strict=True)
+
+            if (
+                check_reader.is_encrypted
+                or len(check_reader.pages) != original_pages
+            ):
+                check_reader.close()
+                raise HTTPException(
+                    status_code=422,
+                    detail="The compressed PDF failed validation."
+                )
+
+            check_reader.close()
+
         except HTTPException:
             raise
+
+        except subprocess.TimeoutExpired:
+            raise HTTPException(
+                status_code=504,
+                detail="Compression timed out. Please try a smaller or simpler PDF."
+            )
 
         except FileNotFoundError:
             raise HTTPException(
@@ -500,7 +495,7 @@ async def compress_pdf(
                 detail="Could not process this PDF. It may be damaged or unsupported."
             )
 
-    return pdf_response(best_pdf_bytes, "compressed.pdf")
+    return pdf_response(pdf_bytes, "compressed.pdf")
 
 
 # Protect PDF endpoint
