@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  FileText, FileImage, FilePenLine, Files, Scissors, FileDown, ShieldCheck,
+  FileText, FileImage, FilePenLine, Files, Scissors, FileDown, ShieldCheck, FileSpreadsheet,
   Image as ImageIcon, Menu, X, UploadCloud, ArrowRight, CheckCircle2,
   Trash2, ArrowUp, ArrowDown
 } from "lucide-react";
@@ -24,6 +24,7 @@ const tools = [
  { title: "Split PDF", desc: "Extract selected pages or split a PDF into multiple files.", icon: Scissors, kind: "planned", color: "teal", href: "/split-pdf" },
 { title: "Compress PDF", desc: "Reduce PDF file size while maintaining document quality.", icon: FileDown, kind: "planned", color: "pink", href: "/compress-pdf" },
 { title: "Protect PDF", desc: "Add AES-256 password protection to PDF documents.", icon: ShieldCheck, kind: "planned", color: "indigo", href: "/protect-pdf" },
+  { title: "Excel to PDF", desc: "Convert XLSX and XLS spreadsheets into PDF documents.", icon: FileSpreadsheet, kind: "planned", color: "green", href: "/excel-to-pdf" },
 ];
 
 const homepageFaqs = [
@@ -285,6 +286,7 @@ export default function Home() {
             <a href="/merge-pdf" className="hover:text-red-600">Merge PDF</a>
             <a href="/split-pdf" className="text-red-600 hover:underline">Split PDF</a>
 <a href="/compress-pdf" className="text-red-600 hover:underline">Compress PDF</a>
+            <a href="/excel-to-pdf" className="text-green-700 hover:underline">Excel to PDF</a>
             <a href="/protect-pdf" className="text-red-600 hover:underline">Protect PDF</a>
             <a href="#faqs" className="hover:text-red-600">FAQs</a>
           </nav>
@@ -307,6 +309,7 @@ export default function Home() {
             <a onClick={() => setMobileOpen(false)} href="/merge-pdf">Merge PDF</a>
             <a onClick={() => setMobileOpen(false)} href="/split-pdf">Split PDF</a>
 <a onClick={() => setMobileOpen(false)} href="/compress-pdf">Compress PDF</a>
+            <a onClick={() => setMobileOpen(false)} href="/excel-to-pdf">Excel to PDF</a>
 <a onClick={() => setMobileOpen(false)} href="/protect-pdf">Protect PDF</a>
             <a onClick={() => setMobileOpen(false)} href="#how">How it works</a>
             <a onClick={() => setMobileOpen(false)} href="#faqs">FAQs</a>
@@ -410,6 +413,7 @@ export default function Home() {
             <a href="/merge-pdf" className="text-red-600 hover:underline">Merge PDF</a>
             <a href="/split-pdf" className="text-red-600 hover:underline">Split PDF</a>
 <a href="/compress-pdf" className="text-red-600 hover:underline">Compress PDF</a>
+            <a href="/excel-to-pdf" className="text-red-600 hover:underline">Excel to PDF</a>
 <a href="/protect-pdf" className="text-red-600 hover:underline">Protect PDF</a>
           </div>
         </div>
@@ -708,6 +712,7 @@ export default function Home() {
           <a href="/merge-pdf" className="hover:text-red-600">Merge PDF</a>
           <a href="/split-pdf" className="text-red-600" >Split PDF</a>
 <a href="/compress-pdf" className="text-red-600 ">Compress PDF</a>
+          <a href="/excel-to-pdf" className="hover:text-red-600">Excel to PDF</a>
 <a href="/protect-pdf" className="text-red-600 ">Protect PDF</a>
         </nav>
         © {new Date().getFullYear()} PDF Tools. All rights reserved.
