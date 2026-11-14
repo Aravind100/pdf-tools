@@ -753,6 +753,89 @@ async def split_pdf(
     )
 
 
+# Excel to PDF endpoint
+@app.post("/convert/excel-to-pdf")
+async def excel_to_pdf(file: UploadFile = File(...)):
+
+    with tempfile.TemporaryDirectory(prefix="pdftools-excel-") as tmp:
+        folder = Path(tmp)
+
+        source = await save_upload(
+            file,
+            {".xlsx", ".xls"},
+            folder
+        )
+
+        output = folder / "input.pdf"
+
+        try:
+            # Use a unique LibreOffice profile for this conversion
+            profile = folder / "lo-profile"
+            profile_uri = profile.resolve().as_uri()
+
+            result = subprocess.run(
+                [
+                    "soffice",
+                    "--headless",
+                    f"-env:UserInstallation={profile_uri}",
+                    "--convert-to",
+                    "pdf:calc_pdf_Export",
+                    "--outdir",
+                    str(folder),
+                    str(source)
+                ],
+                capture_output=True,
+                text=True,
+                timeout=180,
+                check=False
+            )
+
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=503,
+                detail="LibreOffice Calc is not installed or configured."
+            )
+
+        except subprocess.TimeoutExpired:
+            raise HTTPException(
+                status_code=504,
+                detail="Excel conversion took too long. Please try a smaller workbook."
+            )
+
+        if result.returncode != 0 or not output.exists():
+            detail = (
+                result.stderr or result.stdout or "Excel conversion failed."
+            )[-1200:]
+
+            raise HTTPException(
+                status_code=422,
+                detail=f"Could not convert this Excel file: {detail}"
+            )
+
+        try:
+            pdf_bytes = output.read_bytes()
+
+            if not pdf_bytes:
+                raise ValueError("Empty PDF")
+
+            check_reader = PdfReader(BytesIO(pdf_bytes), strict=True)
+
+            if check_reader.is_encrypted or len(check_reader.pages) == 0:
+                check_reader.close()
+                raise ValueError("Invalid PDF output")
+
+            check_reader.close()
+
+        except Exception:
+            raise HTTPException(
+                status_code=422,
+                detail="Excel conversion produced an invalid PDF. Please check your workbook."
+            )
+
+    return pdf_response(pdf_bytes, "excel-converted.pdf")
+
+
+
 # Existing Gujarati-compatible Word-to-PDF endpoint
 @app.post("/convert/docx-to-pdf")
 async def docx_to_pdf(file: UploadFile = File(...)):
